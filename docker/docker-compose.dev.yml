@@ -1,0 +1,72 @@
+name: payever-assessment
+services:
+  back-nest:
+    container_name: nest
+    healthcheck:
+      test: ["CMD", "node", "healthcheck.js"]
+      interval: 5s
+      retries: 30
+    build:
+      context: ../
+      dockerfile: docker/dockerfile.nest.dev
+    ports:
+      - "3000:3000"
+    volumes:
+      - ../nestjs:/app
+    working_dir: /app
+    environment:
+      DATABASE_HOST: database-mongo
+      DATABASE_PORT: 27017
+      DATABASE_NAME: payever-assessment
+      DATABASE_USER: api
+      DATABASE_PASSWORD: VladAssessment
+      MESSAGING_SERVICE_HOSTNAME: management-rabbit-mq
+      MESSAGING_SERVICE_PORT: 5672
+      MESSAGING_SERVICE_USER: user
+      MESSAGING_SERVICE_PASS: pass
+    networks:
+      - inner-network
+
+  database-mongo:
+    container_name: mongo
+    image: mongo:6.0
+    restart: always
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: example
+      API_USER_NAME: api
+      API_USER_PASSWORD: VladAssessment
+      API_USER_DATABASE: payever-assessment
+    volumes:
+      - ../mongo/db:/data/db
+      - ../mongo/init.js:/docker-entrypoint-initdb.d/init.js
+    networks:
+      - inner-network
+
+  dbm-mongo:
+    container_name: database-management
+    image: mongo-express
+    restart: always
+    ports:
+      - 8081:8081
+    environment:
+      ME_CONFIG_MONGODB_ADMINUSERNAME: root
+      ME_CONFIG_MONGODB_ADMINPASSWORD: example
+      ME_CONFIG_MONGODB_URL: mongodb://root:example@database-mongo:27017/
+    networks:
+      - inner-network
+
+  management-rabbit-mq:
+    container_name: rabbit-mq
+    image: rabbitmq:3.11-management
+    ports:
+      - 15672:15672
+    environment:
+      - RABBITMQ_DEFAULT_USER=user
+      - RABBITMQ_DEFAULT_PASS=pass
+    networks:
+      - inner-network
+
+
+networks:
+  inner-network:
